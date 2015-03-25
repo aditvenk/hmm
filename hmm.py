@@ -44,12 +44,17 @@ class Hmm():
         self.B = B_init
         self.pi = pi_init
 
+        # useful lengths
+        self.N = len(self.pi.keys())
+        self.M = len(self.B[0])
+
         pp.pprint("Initial A:")
         pp.pprint(self.A)
         pp.pprint("Initial B:")
         pp.pprint(self.B)
         pp.pprint("Initial pi:")
         pp.pprint(self.pi)
+        pp.pprint("Initial N = %d, M = %d" % (self.N, self.M))
 
     def pickSample (self, probs):
         '''
@@ -108,6 +113,19 @@ class Hmm():
 
         return beta
 
+    def generateGamma (self, obs):
+        alpha = self.generateAlpha(obs)
+        beta = self.generateBeta(obs)
+        filtered_prob = self.filtering(obs)
+        T = len(obs)
+
+        # state sequences
+        gamma = {}
+        for t in range(T):
+            gamma[t] = [ alpha[t][i]*beta[t][i]/filtered_prob for i in self.pi.keys()]
+
+        return gamma
+
     def filtering (self, obs):
         '''
         given a set of observations and knowing the HMM model, we calculate likelihood of these observations from the given HMM. This is also called filtering.
@@ -119,7 +137,6 @@ class Hmm():
 
         '''
         T = len(obs)
-        print "obs : ", obs
 
         alpha = self.generateAlpha(obs)
         return sum(alpha[T-1])
@@ -129,18 +146,20 @@ class Hmm():
         '''
         given a set of observations and knowing the HMM model, we return the most likely state sequence that led to this set of observations
         '''
-
-        alpha = self.generateAlpha(obs)
-        beta = self.generateBeta(obs)
-        filtered_prob = self.filtering(obs)
+        gamma = self.generateGamma(obs)
         T = len(obs)
-        # state sequences
-        gamma = {}
+
         # likely state sequence
         x = []
         for t in range(T):
-            gamma[t] = [ alpha[t][i]*beta[t][i]/filtered_prob for i in self.pi.keys()]
             x.append(argmax(gamma[t]))
 
         return x
+
+    def learnModel (self, obs):
+        '''
+        given a set of observations, we want to learn the HMM model. Return A,B,pi
+        '''
+
+
 
