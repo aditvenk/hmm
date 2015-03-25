@@ -8,7 +8,6 @@ def enum (**enums):
     return type('Enum', (), enums)
 
 
-
 def main():
     # build the hmm
     '''
@@ -41,6 +40,9 @@ def main():
 
     n = hmm.Hmm( A_init = A_init, B_init = B_init, pi_init = pi_init)
 
+    obs = n.generateObservations(1000)
+
+    print obs
 
 if __name__ == "__main__":
     main()

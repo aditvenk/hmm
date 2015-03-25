@@ -1,4 +1,13 @@
+import numpy as np
 import pprint as pp
+from operator import itemgetter
+
+def argmax(lis):
+    '''
+    given any list, return argument of max element
+    '''
+    index, element = max(enumerate(lis), key=itemgetter(1))
+    return index
 
 class Hmm():
     ''' an HMM is characterized by three things <A,B,pi>
@@ -8,12 +17,12 @@ class Hmm():
     bj(k) = P (observation k at t | state qj at t)
     pi = Initial state distribution
     '''
-    pi = {}
-    A = {}
-    B = {}
-
     def __init__ (self, A_init, B_init, pi_init):
         # verify the inputs
+        self.pi = {}
+        self.A = {}
+        self.B = {}
+
         fail = 0
         for k in A_init.keys():
             if sum(A_init[k].values()) != 1:
@@ -30,18 +39,36 @@ class Hmm():
             exit(-1)
 
 
-        A = A_init
-        B = B_init
-        pi = pi_init
+        self.A = A_init
+        self.B = B_init
+        self.pi = pi_init
 
         pp.pprint("Initial A:")
-        pp.pprint(A)
+        pp.pprint(self.A)
         pp.pprint("Initial B:")
-        pp.pprint(B)
+        pp.pprint(self.B)
         pp.pprint("Initial C:")
-        pp.pprint(pi)
+        pp.pprint(self.pi)
+
+    def pickSample (self, probs):
+        '''
+        given a multinomial distribution, it will pick a sample and return index
+        '''
+        sample_dist = np.random.multinomial(1, probs, size=1)
+        return argmax(sample_dist[0])
 
     def generateObservations (self, num_obs):
         ''' generate num_obs observations of this HMM
         '''
+        X = [] # list of Xs
+        O = [] # list of obs
 
+        for n in range(num_obs):
+            if n == 0: #initial case
+                X.append(self.pickSample(self.pi.values())) # pick an initial value based on pi
+            else:
+                # update hidden variable based on transition model
+                X.append(self.pickSample(self.A[X[n-1]].values()))
+            # pick an observation based on observation model
+            O.append(self.pickSample(self.B[X[n]].values()))
+        return O
