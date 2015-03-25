@@ -45,11 +45,13 @@ def main():
 
     n = hmm.Hmm( A_init = A_init, B_init = B_init, pi_init = pi_init)
 
-    obs = n.generateObservations(6)
+    obs = n.generateObservations(100)
     #print obs
 
     # Finding the likelihood of given observations from HMM (Filtering)
     print n.filtering(obs)
+
+    print n.mostLikelyStateSequence(obs)
 
 if __name__ == "__main__":
     main()

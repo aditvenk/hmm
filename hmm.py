@@ -72,7 +72,41 @@ class Hmm():
                 X.append(self.pickSample(self.A[X[n-1]].values()))
             # pick an observation based on observation model
             O.append(self.pickSample(self.B[X[n]].values()))
+        print X
         return O
+
+    def generateAlpha (self, obs):
+        '''
+        Given a set of observations, this will calculate the forward messages - alpha
+        '''
+        T = len(obs)
+        alpha = {} # T x N matrix
+
+        for t in range(T):
+            if t == 0:
+                # initialize alpha
+                alpha[t] = [ self.pi[i] * self.B[i][obs[t]] for i in self.pi.keys()]
+            else:
+                alpha[t] = [ sum( alpha[t-1][j]*self.A[j][i] for j in self.pi.keys())*self.B[i][obs[t]] for i in self.pi.keys() ]
+
+        #print "alpha is ", alpha
+        return alpha
+
+
+    def generateBeta(self, obs):
+        '''
+        Given a set of observations, this will generate the backward messages - beta
+        '''
+        T = len(obs)
+        beta = {}
+
+        for t in reversed(range(T)):
+            if t == T-1: #initial
+                beta[t] = [ 1 for i in self.pi.keys()]
+            else:
+                beta[t] = [ sum(self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j] for j in self.pi.keys()) for i in self.pi.keys()]
+
+        return beta
 
     def filtering (self, obs):
         '''
@@ -87,18 +121,26 @@ class Hmm():
         T = len(obs)
         print "obs : ", obs
 
-        alpha = {} # T x N matrix
-
-        for t in range(T):
-            if t == 0:
-                # initialize alpha
-                alpha[t] = [ self.pi[i] * self.B[i][obs[t]] for i in self.pi.keys()]
-            else:
-                alpha[t] = [ sum( alpha[t-1][j]*self.A[j][i] for j in self.pi.keys())*self.B[i][obs[t]] for i in self.pi.keys() ]
-
-        #print "alpha is ", alpha
-
+        alpha = self.generateAlpha(obs)
         return sum(alpha[T-1])
 
 
+    def mostLikelyStateSequence (self, obs):
+        '''
+        given a set of observations and knowing the HMM model, we return the most likely state sequence that led to this set of observations
+        '''
+
+        alpha = self.generateAlpha(obs)
+        beta = self.generateBeta(obs)
+        filtered_prob = self.filtering(obs)
+        T = len(obs)
+        # state sequences
+        gamma = {}
+        # likely state sequence
+        x = []
+        for t in range(T):
+            gamma[t] = [ alpha[t][i]*beta[t][i]/filtered_prob for i in self.pi.keys()]
+            x.append(argmax(gamma[t]))
+
+        return x
 
