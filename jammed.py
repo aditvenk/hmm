@@ -1,4 +1,6 @@
 #! /usr/bin/py
+# Author - Aditya Venkataraman <adityav@cs.wisc.edu>
+
 import numpy as np
 import sys
 import pprint as pp

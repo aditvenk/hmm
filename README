@@ -1,2 +1,9 @@
+Author: Aditya Venkataraman <adityav@cs.wisc.edu>
+
 A python based hmm for a jammed network example
+
+Generic HMM implementation in hmm.py. Refer http://www.cs.sjsu.edu/faculty/stamp/RUA/HMM.pdf for details
+
+NW congestion is depicted as a HMM in jammed.py. Refer https://code.google.com/p/jahmm/wiki/Example for details
+
 
