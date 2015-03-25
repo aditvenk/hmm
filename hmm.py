@@ -47,7 +47,7 @@ class Hmm():
         pp.pprint(self.A)
         pp.pprint("Initial B:")
         pp.pprint(self.B)
-        pp.pprint("Initial C:")
+        pp.pprint("Initial pi:")
         pp.pprint(self.pi)
 
     def pickSample (self, probs):
@@ -72,3 +72,32 @@ class Hmm():
             # pick an observation based on observation model
             O.append(self.pickSample(self.B[X[n]].values()))
         return O
+
+    def filtering (self, obs):
+        '''
+        given a set of observations and knowing the HMM model, we calculate likelihood of these observations from the given HMM. This is also called filtering.
+        This is implemented using forward-messages or alpha-passing.
+
+        P(obs|HMM) = sum over all hidden state (alpha_T_1 (i))
+
+        T = no. of observations
+
+        '''
+        T = len(obs)
+        print "obs : ", obs
+
+        alpha = {} # T x N matrix
+
+        for t in range(T):
+            if t == 0:
+                # initialize alpha
+                alpha[t] = [ self.pi[i] * self.B[i][obs[t]] for i in self.pi.keys()]
+            else:
+                alpha[t] = [ sum( alpha[t-1][j]*self.A[j][i] for j in self.pi.keys())*self.B[i][obs[t]] for i in self.pi.keys() ]
+
+        #print "alpha is ", alpha
+
+        return sum(alpha[T-1])
+
+
+

@@ -18,6 +18,9 @@ def main():
     NW = enum(jammed=0, not_jammed=1)
     Ob = enum(ok=0, loss=1)
 
+    print "state notations: "
+    print "Hidden variables: jammed = 0, not_jammed = 1"
+    print "Observations: ok = 0, loss = 1"
     A_init = {}
     A_init[NW.jammed] = {}
     A_init[NW.jammed][NW.jammed] = 0.9
@@ -40,9 +43,11 @@ def main():
 
     n = hmm.Hmm( A_init = A_init, B_init = B_init, pi_init = pi_init)
 
-    obs = n.generateObservations(1000)
+    obs = n.generateObservations(6)
+    #print obs
 
-    print obs
+    # Finding the likelihood of given observations from HMM (Filtering)
+    print n.filtering(obs)
 
 if __name__ == "__main__":
     main()
