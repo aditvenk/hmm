@@ -48,8 +48,8 @@ def main():
     obs = n.generateObservations(100)
     #print obs
 
-    # Finding the likelihood of given observations from HMM (Filtering)
-    print n.filtering(obs)
+    # Finding the likelihood of given observations from HMM
+    print n.likelihoodOfObservations(obs)
 
     print n.mostLikelyStateSequence(obs)
 

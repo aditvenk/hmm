@@ -116,7 +116,7 @@ class Hmm():
     def generateGamma (self, obs):
         alpha = self.generateAlpha(obs)
         beta = self.generateBeta(obs)
-        filtered_prob = self.filtering(obs)
+        filtered_prob = self.likelihoodOfObservations(obs)
         T = len(obs)
 
         # state sequences
@@ -126,9 +126,9 @@ class Hmm():
 
         return gamma
 
-    def filtering (self, obs):
+    def likelihoodOfObservations (self, obs):
         '''
-        given a set of observations and knowing the HMM model, we calculate likelihood of these observations from the given HMM. This is also called filtering.
+        given a set of observations and knowing the HMM model, we calculate likelihood of these observations from the given HMM.
         This is implemented using forward-messages or alpha-passing.
 
         P(obs|HMM) = sum over all hidden state (alpha_T_1 (i))
