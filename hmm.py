@@ -84,7 +84,13 @@ class Hmm():
 
     def generateAlpha (self, obs):
         '''
-        Given a set of observations, this will calculate the forward messages - alpha & scaling factors c
+        Given a set of observations, this will calculate the forward passes - alpha & scaling factors c
+
+        alpha[t][i] = P ( o0, o1, ... ot, xt = i | HMM)  --> probability of partial observed sequence till time t and state = i at time t.
+        alpha can be computed recursively.
+        alpha[t][i] = sum_over_j (alpha[t-1][j]*aji) * b[i][obs[t]]
+
+        As T increases, alpha will tend to 0. To avoid underflow, we will scale the value of alpha at each iteration.
         '''
         T = len(obs)
         alpha = {} # T x N matrix
@@ -95,31 +101,24 @@ class Hmm():
             if t == 0:
                 # initialize alpha
                 c[t] = 0
+                alpha[t] = [ self.pi[i]*self.B[i][obs[t]] for i in range(self.N) ]
+                c[t] = sum(alpha[t])
+                c[t] = float(1/c[t])
+                alpha[t] = [ c[t]*alpha[t][i] for i in range(self.N) ]
+
+            else:
                 for i in range(self.N):
-                    alpha[t].append(self.pi[i]*self.B[i][obs[t]])
+                    alpha[t].append(0) # set alpha[t][i] = 0
+                    alpha[t][i] = sum(alpha[t-1][j]*self.A[j][i] for j in range(self.N))
+                    alpha[t][i] = alpha[t][i]*self.B[i][obs[t]]
 
                 c[t] = sum(alpha[t])
                 c[t] = float(1/c[t])
 
-                for i in range(self.N):
-                    alpha[t][i] = c[t]*alpha[t][i]
-
-            else:
-                c[t] = 0
-                for i in range(self.N):
-                    alpha[t].append(0)
-                    for j in range(self.N):
-                        alpha[t][i] = alpha[t][i] + alpha[t-1][j]*self.A[j][i]
-                    alpha[t][i] = alpha[t][i]*self.B[i][obs[t]]
-                    c[t] = c[t] + alpha[t][i]
-
-                c[t] = float(1/c[t])
-                for i in range(self.N):
-                    alpha[t][i] = c[t]*alpha[t][i]
-
+                alpha[t] = [ c[t]*alpha[t][i] for i in range(self.N) ]
 
         #print "alpha is ", alpha
-        return alpha,c
+        return alpha, c
 
 
     def generateBeta(self, obs, c):

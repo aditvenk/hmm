@@ -5,6 +5,7 @@ import numpy as np
 import sys
 import pprint as pp
 import hmm
+import math
 
 def enum (**enums):
     return type('Enum', (), enums)
@@ -46,10 +47,11 @@ def main():
     n = hmm.Hmm( A_init = A_init, B_init = B_init, pi_init = pi_init)
 
     obs = n.generateObservations(100)
-    #print obs
+    #print 'obs = ', obs
 
     # Finding the likelihood of given observations from HMM
     print n.likelihoodOfObservations(obs)
+    print math.exp(n.likelihoodOfObservations(obs))
 
     print n.mostLikelyStateSequence(obs)
 
