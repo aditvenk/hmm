@@ -1,6 +1,8 @@
 # Author - Aditya Venkataraman <adityav@cs.wisc.edu>
 import numpy as np
 import pprint as pp
+import math
+
 from operator import itemgetter
 
 def argmax(lis):
@@ -82,54 +84,98 @@ class Hmm():
 
     def generateAlpha (self, obs):
         '''
-        Given a set of observations, this will calculate the forward messages - alpha
+        Given a set of observations, this will calculate the forward messages - alpha & scaling factors c
         '''
         T = len(obs)
         alpha = {} # T x N matrix
+        c = {} # HMM scaling. w/o scaling, alpha can underflow for large T
 
         for t in range(T):
+            alpha[t] = []
             if t == 0:
                 # initialize alpha
-                alpha[t] = [ self.pi[i] * self.B[i][obs[t]] for i in self.pi.keys()]
+                c[t] = 0
+                for i in range(self.N):
+                    alpha[t].append(self.pi[i]*self.B[i][obs[t]])
+
+                c[t] = sum(alpha[t])
+                c[t] = float(1/c[t])
+
+                for i in range(self.N):
+                    alpha[t][i] = c[t]*alpha[t][i]
+
             else:
-                alpha[t] = [ sum( alpha[t-1][j]*self.A[j][i] for j in self.pi.keys())*self.B[i][obs[t]] for i in self.pi.keys() ]
+                c[t] = 0
+                for i in range(self.N):
+                    alpha[t].append(0)
+                    for j in range(self.N):
+                        alpha[t][i] = alpha[t][i] + alpha[t-1][j]*self.A[j][i]
+                    alpha[t][i] = alpha[t][i]*self.B[i][obs[t]]
+                    c[t] = c[t] + alpha[t][i]
+
+                c[t] = float(1/c[t])
+                for i in range(self.N):
+                    alpha[t][i] = c[t]*alpha[t][i]
+
 
         #print "alpha is ", alpha
-        return alpha
+        return alpha,c
 
 
-    def generateBeta(self, obs):
+    def generateBeta(self, obs, c):
         '''
-        Given a set of observations, this will generate the backward messages - beta
+        Given a set of observations & scaling factors, this will generate the backward messages - beta
         '''
         T = len(obs)
         beta = {}
 
         for t in reversed(range(T)):
+            beta[t] = []
             if t == T-1: #initial
-                beta[t] = [ 1 for i in self.pi.keys()]
+                beta[t] = [ c[T-1] for i in range(self.N)]
             else:
-                beta[t] = [ sum(self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j] for j in self.pi.keys()) for i in self.pi.keys()]
+                for i in range(self.N):
+                    beta[t].append(0)
+                    for j in range(self.N):
+                        beta[t][i] = beta[t][i] + self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j]
+
+                    #scale
+                    beta[t][i] = c[t]*beta[t][i]
 
         return beta
 
-    def generateGamma (self, obs):
-        alpha = self.generateAlpha(obs)
-        beta = self.generateBeta(obs)
+    def generateGammas (self, obs):
+        '''
+        given a set of obs, returns tuple of gamma and digamma
+        '''
+
+        alpha,c = self.generateAlpha(obs)
+        beta = self.generateBeta(obs,c)
         filtered_prob = self.likelihoodOfObservations(obs)
         T = len(obs)
 
-        # state sequences
         gamma = {}
-        for t in range(T):
-            gamma[t] = [ alpha[t][i]*beta[t][i]/filtered_prob for i in self.pi.keys()]
+        digamma = {}
+        for t in range(T-1): # t=0 to T-2
+            denom = 0
+            digamma[t] = {}
+            gamma[t] = []
+            for i in range(self.N):
+                for j in range(self.N):
+                    denom = denom + alpha[t][i]*self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j]
 
-        return gamma
+            for i in range(self.N):
+                digamma[t][i] = {}
+                gamma[t].append(0)
+                for j in range(self.N):
+                    digamma[t][i][j] = (alpha[t][i]*self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j])/denom
+                    gamma[t][i] = gamma[t][i] + digamma[t][i][j]
+
+        return (gamma,digamma)
 
     def likelihoodOfObservations (self, obs):
         '''
-        given a set of observations and knowing the HMM model, we calculate likelihood of these observations from the given HMM.
-        This is implemented using forward-messages or alpha-passing.
+        given a set of observations and knowing the HMM model, we calculate log of likelihood of these observations from the given HMM. the log is calculated to avoid underflow for large T
 
         P(obs|HMM) = sum over all hidden state (alpha_T_1 (i))
 
@@ -137,21 +183,25 @@ class Hmm():
 
         '''
         T = len(obs)
+        alpha,c = self.generateAlpha(obs)
+        logProb = 0
 
-        alpha = self.generateAlpha(obs)
-        return sum(alpha[T-1])
+        for i in range(T):
+            logProb = logProb + math.log(c[i])
+        logProb = -1*logProb
+        return logProb
 
 
     def mostLikelyStateSequence (self, obs):
         '''
         given a set of observations and knowing the HMM model, we return the most likely state sequence that led to this set of observations
         '''
-        gamma = self.generateGamma(obs)
+        gamma,digamma = self.generateGammas(obs)
         T = len(obs)
 
         # likely state sequence
         x = []
-        for t in range(T):
+        for t in range(T-1):
             x.append(argmax(gamma[t]))
 
         return x
