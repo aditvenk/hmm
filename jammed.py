@@ -12,6 +12,14 @@ def enum (**enums):
 
 
 def main():
+
+    if (len(sys.argv) != 2):
+        print "usage: python jammed.py <no-of-observations>"
+        exit(-1)
+
+    num_obs = int(sys.argv[1])
+    print "Simulating NW HMM with %d observations " % num_obs
+
     # build the hmm
     '''
     In Network HMM, N = 2 (jammed, not jammed)
@@ -20,6 +28,7 @@ def main():
     '''
     NW = enum(jammed=0, not_jammed=1)
     Ob = enum(ok=0, loss=1)
+
 
     print "state notations: "
     print "Hidden variables: jammed = 0, not_jammed = 1"
@@ -46,14 +55,21 @@ def main():
 
     n = hmm.Hmm( A_init = A_init, B_init = B_init, pi_init = pi_init)
 
-    obs = n.generateObservations(100)
-    #print 'obs = ', obs
+    X, obs = n.generateObservations(num_obs)
+
 
     # Finding the likelihood of given observations from HMM
-    print n.likelihoodOfObservations(obs)
-    print math.exp(n.likelihoodOfObservations(obs))
+    print "Log of likelihood of observations = ", n.likelihoodOfObservations(obs)
+    print "Likelihood of observations = ", math.exp(n.likelihoodOfObservations(obs))
 
-    print n.mostLikelyStateSequence(obs)
+    learned_X = n.mostLikelyStateSequence(obs)
+    #print "Original state sequence = " , X
+    #print "Original length = ", len(X)
+    #print "Most likely state sequence", learned_X
+    #print "Learned length = ", len(learned_X)
+
+    print "Error in learned sequence = ", n.errorCompare(X, learned_X)
+
 
 if __name__ == "__main__":
     main()

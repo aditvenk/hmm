@@ -66,7 +66,7 @@ class Hmm():
         return argmax(sample_dist[0])
 
     def generateObservations (self, num_obs):
-        ''' generate num_obs observations of this HMM
+        ''' generate num_obs observations of this HMM. Returns state sequence & observation sequence.
         '''
         X = [] # list of Xs
         O = [] # list of obs
@@ -79,8 +79,7 @@ class Hmm():
                 X.append(self.pickSample(self.A[X[n-1]].values()))
             # pick an observation based on observation model
             O.append(self.pickSample(self.B[X[n]].values()))
-        print X
-        return O
+        return X, O
 
     def generateAlpha (self, obs):
         '''
@@ -121,54 +120,70 @@ class Hmm():
         return alpha, c
 
 
-    def generateBeta(self, obs, c):
+    def generateBeta(self, obs, c=None):
         '''
-        Given a set of observations & scaling factors, this will generate the backward messages - beta
+        Given a set of observations & scaling factors, this will generate the backward/beta passes
+
+        beta[t][i] = P ( obs[t+1], obs[t+2] ... obs[T-1] | x[t] = i, HMM) --> Probability of future observations, given a value of current state.
+        beta can be computed recursively.
+
+        beta[t][i] = sum_over_j ( aij * bj(Ot+1) * beta[t+1][j] )
+
         '''
         T = len(obs)
         beta = {}
+
+        if c == None:
+            alpha, c = self.generateAlpha (obs)
 
         for t in reversed(range(T)):
             beta[t] = []
             if t == T-1: #initial
                 beta[t] = [ c[T-1] for i in range(self.N)]
             else:
-                for i in range(self.N):
-                    beta[t].append(0)
-                    for j in range(self.N):
-                        beta[t][i] = beta[t][i] + self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j]
 
-                    #scale
-                    beta[t][i] = c[t]*beta[t][i]
+                beta[t] = [ c[t]*sum(self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j] for j in range(self.N))  for i in range(self.N)]
 
         return beta
 
     def generateGammas (self, obs):
         '''
         given a set of obs, returns tuple of gamma and digamma
+
+        gamma[t][i] = P (x[t]=i | O, HMM) --> Prob of particular x[t] being i given all the observations.
+        gamma[t][i] = alpha[t][i]*beta[t][i]/P(O|HMM)
+        Finding gamma is aka Smoothing in Intro to AI, Russell and Norvig
+
+        digamma[t][i][j] = P (x[t] = i, x[t+1] = j | O, HMM) --> Prob of x transitioning from i to j, from t to t+1 given all the observations
+        digamma[t][i][j] = alpha[t][i]*aij*b[j][Ot+1]beta[t+1][j]/P(O|HMM)
+
+        digamma and gamma are related as:
+        gamma[t][i] = sum_over_j ( digamma[t][i][j] )
         '''
 
-        alpha,c = self.generateAlpha(obs)
-        beta = self.generateBeta(obs,c)
-        filtered_prob = self.likelihoodOfObservations(obs)
+        alpha, c = self.generateAlpha(obs)
+        beta = self.generateBeta(obs, c)
+        logProb = self.likelihoodOfObservations(obs)
+        prob = math.exp(logProb)
         T = len(obs)
 
         gamma = {}
         digamma = {}
+        # gamme can be calculated from 0 to T-2 only. We cant smooth the last state value.
         for t in range(T-1): # t=0 to T-2
             denom = 0
             digamma[t] = {}
             gamma[t] = []
-            for i in range(self.N):
-                for j in range(self.N):
-                    denom = denom + alpha[t][i]*self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j]
 
             for i in range(self.N):
-                digamma[t][i] = {}
-                gamma[t].append(0)
                 for j in range(self.N):
-                    digamma[t][i][j] = (alpha[t][i]*self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j])/denom
-                    gamma[t][i] = gamma[t][i] + digamma[t][i][j]
+                    denom += alpha[t][i]*self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j]
+
+            for i in range(self.N):
+                digamma[t][i] = [ alpha[t][i]*self.A[i][j]*self.B[j][obs[t+1]]*beta[t+1][j]/denom for j in range(self.N) ]
+
+            gamma[t] = [ sum( digamma[t][i][j] for j in range(self.N)) for i in range(self.N)]
+
 
         return (gamma,digamma)
 
@@ -205,10 +220,39 @@ class Hmm():
 
         return x
 
+    def errorCompare ( self, orig, learned):
+        '''
+        given two sequences of states, original & learned, calculate the no. of erroneous state values as %
+        '''
+
+        if len(orig) != len(learned) + 1: # learned will be shorter by 1.
+            print "errorCompare: State sequences don't match in length. Returning. "
+            return
+
+        diff_count = 0
+        for i in range(len(learned)):
+            if orig[i] != learned[i]:
+                diff_count += 1
+
+        print "errorCompare - no. of mismatches = ", diff_count
+        return float(diff_count*100/len(orig))
+
+
     def learnModel (self, obs):
         '''
         given a set of observations, we want to learn the HMM model. Return A,B,pi
         '''
+
+class LearnHmm (Hmm):
+    '''
+    Learn Hmm given a bunch of observations
+    '''
+
+    def __init__ (self, N_init, M_init):
+        self.N = N_init
+        self.M = M_init
+
+        # initialize A, B, pi to random values
 
 
 
